@@ -117,13 +117,11 @@ body{
 @keyframes listeningGlow{
 
     from{
-
         box-shadow:
         0 0 20px #d966ff;
     }
 
     to{
-
         box-shadow:
         0 0 80px #d966ff;
     }
@@ -167,7 +165,7 @@ h1{
 }
 
 /* =========================
-   MICROPHONE BUTTON
+   BUTTONS
 ========================= */
 
 .mic-btn{
@@ -205,7 +203,7 @@ h1{
 }
 
 /* =========================
-   CHAT CONTAINER
+   CHAT
 ========================= */
 
 .chat-container{
@@ -246,10 +244,6 @@ h1{
 
     word-wrap:break-word;
 }
-
-/* =========================
-   CHAT BAR
-========================= */
 
 .chat-bar{
 
@@ -455,7 +449,7 @@ h1{
         Hi! I am Jarvis!
     </div>
 
-    <!-- MIC -->
+    <!-- MICROPHONE -->
 
     <button
     class="mic-btn"
@@ -475,13 +469,13 @@ h1{
 
             <div class="system-text">
 
-                Waiting for your command...
+                MARVISLY JARVIS Online...
 
             </div>
 
         </div>
 
-        <!-- INPUT -->
+        <!-- CHAT BAR -->
 
         <div class="chat-bar">
 
@@ -514,7 +508,7 @@ h1{
 ========================= */
 
 const OPENROUTER_API_KEY =
-"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";
+"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";
 
 /* =========================
    ELEMENTS
@@ -564,7 +558,7 @@ if(SpeechRecognition){
 }
 
 /* =========================
-   VOICE LOCK
+   VOICE SETUP
 ========================= */
 
 let selectedVoice = null;
@@ -572,7 +566,7 @@ let selectedVoice = null;
 function loadVoice(){
 
     const voices =
-    window.speechSynthesis.getVoices();
+    speechSynthesis.getVoices();
 
     selectedVoice =
     voices.find(voice =>
@@ -590,103 +584,10 @@ function loadVoice(){
     }
 }
 
-window.speechSynthesis.onvoiceschanged =
+speechSynthesis.onvoiceschanged =
 loadVoice;
 
 loadVoice();
-
-/* =========================
-   MIC BUTTON
-========================= */
-
-micBtn.addEventListener("click", () => {
-
-    if(!recognition){
-
-        addMessage(
-            "System",
-            "Speech Recognition Not Supported",
-            "system-text"
-        );
-
-        return;
-    }
-
-    recognition.start();
-
-    statusText.innerText =
-    "Listening...";
-
-    orb.classList.add("listening");
-});
-
-/* =========================
-   SPEECH RESULT
-========================= */
-
-if(recognition){
-
-    recognition.onresult =
-    async (event) => {
-
-        const transcript =
-        event.results[0][0].transcript;
-
-        addMessage(
-            "You",
-            transcript,
-            "user-text"
-        );
-
-        sendToAI(transcript);
-    };
-
-    recognition.onerror = () => {
-
-        statusText.innerText =
-        "Microphone Error";
-
-        orb.classList.remove(
-            "listening"
-        );
-    };
-}
-
-/* =========================
-   SEND BUTTON
-========================= */
-
-sendBtn.addEventListener("click", () => {
-
-    const message =
-    chatInput.value.trim();
-
-    if(message === "") return;
-
-    addMessage(
-        "You",
-        message,
-        "user-text"
-    );
-
-    chatInput.value = "";
-
-    sendToAI(message);
-});
-
-/* =========================
-   ENTER KEY
-========================= */
-
-chatInput.addEventListener(
-"keypress",
-(e) => {
-
-    if(e.key === "Enter"){
-
-        sendBtn.click();
-    }
-});
 
 /* =========================
    ADD MESSAGE
@@ -711,6 +612,39 @@ className
 }
 
 /* =========================
+   SPEAK
+========================= */
+
+function speak(text){
+
+    speechSynthesis.cancel();
+
+    const speech =
+    new SpeechSynthesisUtterance(
+        text
+    );
+
+    speech.voice =
+    selectedVoice;
+
+    speech.lang =
+    "en-US";
+
+    speech.rate =
+    1;
+
+    speech.pitch =
+    0.9;
+
+    speech.volume =
+    1;
+
+    speechSynthesis.speak(
+        speech
+    );
+}
+
+/* =========================
    SEND TO AI
 ========================= */
 
@@ -731,8 +665,7 @@ async function sendToAI(message){
             headers:{
 
                 "Authorization":
-                "Bearer " +
-                OPENROUTER_API_KEY,
+                `Bearer ${OPENROUTER_API_KEY}`,
 
                 "Content-Type":
                 "application/json",
@@ -776,9 +709,11 @@ async function sendToAI(message){
 
                         "My owner is Evan Mathew."
 
-                        Keep responses smart,
+                        Keep responses:
+                        smart,
                         futuristic,
-                        and friendly.
+                        friendly,
+                        and short.
                         `
                     },
 
@@ -791,24 +726,46 @@ async function sendToAI(message){
             })
         });
 
-        const data =
-        await response.json();
+        /* =========================
+           INVALID API KEY
+        ========================= */
 
-        console.log(data);
-
-        if(data.error){
+        if(response.status === 401){
 
             addMessage(
                 "System",
-                data.error.message,
+                "Invalid OpenRouter API Key",
                 "system-text"
             );
 
             statusText.innerText =
-            "API Error";
+            "Invalid API Key";
 
             return;
         }
+
+        /* =========================
+           SERVER ERROR
+        ========================= */
+
+        if(!response.ok){
+
+            addMessage(
+                "System",
+                `Server Error: ${response.status}`,
+                "system-text"
+            );
+
+            statusText.innerText =
+            "Server Error";
+
+            return;
+        }
+
+        const data =
+        await response.json();
+
+        console.log(data);
 
         const aiMessage =
         data.choices[0]
@@ -832,12 +789,12 @@ async function sendToAI(message){
 
         addMessage(
             "System",
-            "Connection Error",
+            "Connection Failed",
             "system-text"
         );
 
         statusText.innerText =
-        "Connection Failed";
+        "Offline";
     }
 
     orb.classList.remove(
@@ -846,39 +803,106 @@ async function sendToAI(message){
 }
 
 /* =========================
-   SPEAK FUNCTION
+   MICROPHONE BUTTON
 ========================= */
 
-function speak(text){
+micBtn.addEventListener(
+"click",
+() => {
 
-    /* STOP OLD SPEECH */
+    if(!recognition){
 
-    window.speechSynthesis.cancel();
+        addMessage(
+            "System",
+            "Speech Recognition Unsupported",
+            "system-text"
+        );
 
-    const speech =
-    new SpeechSynthesisUtterance(
-        text
+        return;
+    }
+
+    recognition.start();
+
+    statusText.innerText =
+    "Listening...";
+
+    orb.classList.add(
+        "listening"
     );
+});
 
-    speech.voice =
-    selectedVoice;
+/* =========================
+   SPEECH RESULT
+========================= */
 
-    speech.lang =
-    "en-US";
+if(recognition){
 
-    speech.rate =
-    1;
+    recognition.onresult =
+    async (event) => {
 
-    speech.pitch =
-    0.9;
+        const transcript =
+        event.results[0][0]
+        .transcript;
 
-    speech.volume =
-    1;
+        addMessage(
+            "You",
+            transcript,
+            "user-text"
+        );
 
-    window.speechSynthesis.speak(
-        speech
-    );
+        sendToAI(transcript);
+    };
+
+    recognition.onerror =
+    () => {
+
+        statusText.innerText =
+        "Microphone Error";
+
+        orb.classList.remove(
+            "listening"
+        );
+    };
 }
+
+/* =========================
+   SEND BUTTON
+========================= */
+
+sendBtn.addEventListener(
+"click",
+() => {
+
+    const message =
+    chatInput.value.trim();
+
+    if(message === "")
+    return;
+
+    addMessage(
+        "You",
+        message,
+        "user-text"
+    );
+
+    chatInput.value = "";
+
+    sendToAI(message);
+});
+
+/* =========================
+   ENTER KEY
+========================= */
+
+chatInput.addEventListener(
+"keypress",
+(e) => {
+
+    if(e.key === "Enter"){
+
+        sendBtn.click();
+    }
+});
 
 </script>
 
